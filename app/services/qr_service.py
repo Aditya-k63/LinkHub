@@ -1,8 +1,6 @@
 import qrcode
 import io
 import base64
-from qrcode.image.styledpil import StyledPilImage
-from qrcode.image.styles.moduledrawers import RoundedModuleDrawer
 
 
 def generate_qr_code(url: str) -> str:
