@@ -1,19 +1,26 @@
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
-EXEMPT_PATHS = ["/", "/docs", "/openapi.json", "/redoc", "/health"]
+EXEMPT_PATHS = ["/", "/docs", "/openapi.json", "/redoc", "/health", "/dashboard"]
+EXEMPT_PREFIXES = ["/api/auth/", "/static/"]
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in EXEMPT_PATHS:
+        path = request.url.path
+
+        if path in EXEMPT_PATHS:
             return await call_next(request)
+
+        for prefix in EXEMPT_PREFIXES:
+            if path.startswith(prefix):
+                return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
-            if request.url.path.startswith("/api/"):
-                request.state.user_id = None
-                request.state.is_admin = False
+            request.state.user_id = None
+            request.state.is_admin = False
+            if path.startswith("/api/"):
                 return await call_next(request)
             return await call_next(request)
 
