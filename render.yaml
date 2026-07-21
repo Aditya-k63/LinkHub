@@ -10,21 +10,16 @@ services:
           name: linkhub-db
           property: connectionString
       - key: REDIS_URL
-        fromRedis:
-          name: linkhub-redis
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: SECRET_KEY
         generateValue: true
       - key: BASE_URL
-        value: https://linkhub.onrender.com
+        sync: false
 
 databases:
   - name: linkhub-db
     plan: free
     databaseName: linkhub
     user: linkhub
-
-  - name: linkhub-redis
-    plan: free
