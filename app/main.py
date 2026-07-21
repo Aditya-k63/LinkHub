@@ -8,6 +8,8 @@ sys.path.insert(0, str(BASE_DIR))
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
@@ -51,6 +53,14 @@ try:
 except Exception as e:
     print(f"Router error: {e}")
 
+static_dir = BASE_DIR / "static"
+templates_dir = BASE_DIR / "templates"
+
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+templates = Jinja2Templates(directory=str(templates_dir)) if templates_dir.exists() else None
+
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
@@ -62,29 +72,16 @@ async def add_request_id(request: Request, call_next):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return HTMLResponse("""
-    <!DOCTYPE html>
-    <html>
-    <head><title>LinkHub</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { text-align: center; max-width: 600px; padding: 2rem; }
-        h1 { font-size: 3rem; margin-bottom: 1rem; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p { color: #94a3b8; font-size: 1.2rem; margin-bottom: 2rem; }
-        a { color: #6366f1; text-decoration: none; font-size: 1.1rem; border: 2px solid #6366f1; padding: 0.75rem 2rem; border-radius: 8px; transition: all 0.2s; }
-        a:hover { background: #6366f1; color: white; }
-    </style>
-    </head>
-    <body>
-    <div class="container">
-        <h1>LinkHub</h1>
-        <p>Production-ready URL shortener with analytics, caching, and rate limiting.</p>
-        <a href="/docs">View API Docs</a>
-    </div>
-    </body>
-    </html>
-    """)
+    if templates:
+        return templates.TemplateResponse("index.html", {"request": request, "app_name": settings.APP_NAME})
+    return HTMLResponse("<h1>LinkHub</h1><p><a href='/docs'>API Docs</a></p>")
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    if templates:
+        return templates.TemplateResponse("dashboard.html", {"request": request})
+    return HTMLResponse("<h1>Dashboard</h1>")
 
 
 @app.get("/health")
