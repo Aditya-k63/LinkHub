@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LinkHub</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">🔗 LinkHub</a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/docs">API Docs</a>
+                <a href="#" id="logout-btn" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <div class="container">
+            <h1>Dashboard</h1>
+
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Links</h3>
+                    <p id="total-links">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Clicks</h3>
+                    <p id="total-clicks">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Links</h3>
+                    <p id="active-links">0</p>
+                </div>
+            </div>
+
+            <div class="links-section">
+                <h2>Your Links</h2>
+                <div id="links-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

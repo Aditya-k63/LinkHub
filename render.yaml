@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: linkhub
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkhub-db
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: linkhub-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BASE_URL
+        value: https://linkhub.onrender.com
+
+databases:
+  - name: linkhub-db
+    plan: free
+    databaseName: linkhub
+    user: linkhub
+
+  - name: linkhub-redis
+    plan: free

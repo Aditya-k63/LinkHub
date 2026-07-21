@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - Smart URL Shortener</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">🔗 {{ app_name }}</a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/docs">API Docs</a>
+                <a href="#" id="auth-link">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="hero">
+        <div class="container">
+            <h1>Shorten. Track. Optimize.</h1>
+            <p class="subtitle">Production-ready URL shortening with analytics, caching, and intelligent rate limiting.</p>
+
+            <div class="shorten-box">
+                <input type="url" id="url-input" placeholder="Paste your long URL here..." required>
+                <input type="text" id="alias-input" placeholder="Custom alias (optional)">
+                <button id="shorten-btn" onclick="shortenUrl()">Shorten</button>
+            </div>
+
+            <div id="result" class="result hidden">
+                <p>Your shortened URL:</p>
+                <div class="result-box">
+                    <code id="short-url"></code>
+                    <button onclick="copyUrl()">Copy</button>
+                </div>
+                <img id="qr-code" alt="QR Code">
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <h3>⚡ Fast Redirects</h3>
+                    <p>Redis-powered caching for sub-5ms lookups</p>
+                </div>
+                <div class="feature">
+                    <h3>📊 Analytics</h3>
+                    <p>Track clicks, devices, browsers, and geography</p>
+                </div>
+                <div class="feature">
+                    <h3>🔒 Secure</h3>
+                    <p>JWT auth, rate limiting, and password-protected links</p>
+                </div>
+                <div class="feature">
+                    <h3>🐳 Docker Ready</h3>
+                    <p>One command deployment with Docker Compose</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
