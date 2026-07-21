@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build-check:
@@ -25,3 +27,11 @@ jobs:
           JWT_SECRET_KEY: test
           SECRET_KEY: test
         run: python -c "from app.main import app; print('OK')"
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t linkhub-test .
