@@ -51,7 +51,8 @@ def create_link(request: CreateLinkRequest, req: Request, db: Session = Depends(
 
     expires_at = None
     if request.expires_in_hours:
-        expires_at = datetime.utcnow() + __import__("datetime").timedelta(hours=request.expires_in_hours)
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(hours=request.expires_in_hours)
 
     password_hash = None
     if request.password:
@@ -72,7 +73,8 @@ def create_link(request: CreateLinkRequest, req: Request, db: Session = Depends(
 
     cache_link(short_code, str(request.url))
 
-    short_url = f"{settings.BASE_URL}/{short_code}"
+    base_url = settings.BASE_URL or "http://localhost:8000"
+    short_url = f"{base_url}/{short_code}"
     qr_code = generate_qr_code(short_url)
 
     logger.info(f"Link created: {short_code} -> {request.url}")
@@ -139,12 +141,14 @@ def list_links(request: Request, page: int = 1, limit: int = 20, db: Session = D
     links = db.query(Link).filter(Link.owner_id == user_id).offset(offset).limit(limit).all()
     total = db.query(Link).filter(Link.owner_id == user_id).count()
 
+    base_url = settings.BASE_URL or "http://localhost:8000"
+
     return {
         "links": [
             {
                 "id": str(link.id),
                 "short_code": link.short_code,
-                "short_url": f"{settings.BASE_URL}/{link.short_code}",
+                "short_url": f"{base_url}/{link.short_code}",
                 "original_url": link.original_url,
                 "title": link.title,
                 "click_count": link.click_count,
@@ -168,7 +172,7 @@ def update_link(link_id: str, request: UpdateLinkRequest, req: Request, db: Sess
     if request.original_url:
         link.original_url = str(request.original_url)
         invalidate_link_cache(link.short_code)
-        cache_link(link.original_url, link.original_url)
+        cache_link(link.short_code, link.original_url)
 
     if request.title is not None:
         link.title = request.title

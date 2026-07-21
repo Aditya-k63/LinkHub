@@ -7,6 +7,26 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/docs",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "app/main.py"
+    },
+    {
+      "src": "/redoc",
+      "dest": "app/main.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "app/main.py"
     }
