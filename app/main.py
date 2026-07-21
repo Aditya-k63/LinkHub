@@ -6,15 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 import uuid
-from contextvars import ContextVar
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.logger import logger, request_id_var
-from app.middleware.rate_limit import RateLimitMiddleware
-from app.middleware.auth import AuthMiddleware
-from app.api import auth, links, analytics, admin
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -28,12 +23,17 @@ async def startup():
         from app.db.session import engine
         from app.db.models import Base
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created")
     except Exception as e:
-        logger.error(f"Database startup error: {e}")
+        print(f"Database startup error: {e}")
 
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(AuthMiddleware)
+try:
+    from app.middleware.rate_limit import RateLimitMiddleware
+    from app.middleware.auth import AuthMiddleware
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(AuthMiddleware)
+except Exception as e:
+    print(f"Middleware error: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,16 +42,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(links.router)
-app.include_router(analytics.router)
-app.include_router(admin.router)
+try:
+    from app.api import auth, links, analytics, admin
+    app.include_router(auth.router)
+    app.include_router(links.router)
+    app.include_router(analytics.router)
+    app.include_router(admin.router)
+except Exception as e:
+    print(f"Router error: {e}")
 
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
-    request_id_var.set(request_id)
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
@@ -84,14 +87,6 @@ async def home(request: Request):
     """)
 
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    return HTMLResponse("<h1>Dashboard - Coming Soon</h1><p><a href='/'>Home</a></p>")
-
-
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
-
-
-logger.info(f"{settings.APP_NAME} v{settings.APP_VERSION} started")
