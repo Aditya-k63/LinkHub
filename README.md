@@ -1,197 +1,103 @@
-# LinkHub — Production-Ready URL Shortener & Analytics Platform
+# LinkHub
 
-A production-ready URL shortening service with analytics, authentication, caching, rate limiting, and QR code generation.
+A URL shortener I built because I was tired of ugly long links. It does the basics well — shorten URLs, track clicks, generate QR codes — and it's deployed and running live.
 
-## Features
+**Live:** https://linkhub-4b40.onrender.com
 
-- **JWT Authentication** — Secure user registration and login
-- **URL Shortening** — Create short URLs with custom aliases
-- **QR Code Generation** — Auto-generated QR codes for every link
-- **Redis Caching** — Sub-5ms redirect lookups
-- **Rate Limiting** — Redis-based abuse prevention
-- **Click Analytics** — Track clicks, devices, browsers, geography
-- **URL Expiration** — TTL-based auto-deletion
-- **Password-Protected Links** — Optional password requirement
-- **Background Workers** — Celery for async analytics processing
-- **Structured Logging** — Request IDs, timestamps, log levels
-- **CI/CD** — GitHub Actions for testing and deployment
+## What it does
 
-## Architecture
+- Shorten any URL with a custom alias or let it generate one automatically
+- Every link gets a QR code you can download
+- Track clicks — browser, device, OS, referrer, country
+- Set expiration dates on links so they auto-die
+- Password-protect links if you want
+- Redis caching so redirects are fast
+- Rate limiting so nobody spams your API
 
-```
-Client
-   │
-FastAPI Backend
-   │
-   ├─ PostgreSQL (persistence)
-   ├─ Redis (caching + rate limiting)
-   ├─ Celery Worker (background tasks)
-   └─ Nginx (reverse proxy)
-```
+## Built with
 
-## Tech Stack
+- **FastAPI** — the backend framework
+- **PostgreSQL** — stores everything (using Neon for the hosted instance)
+- **Redis** — caching and rate limiting (using Upstash)
+- **SQLAlchemy** — ORM
+- **JWT** — authentication
+- **QRCode + Pillow** — QR code generation
+- **GitHub Actions** — CI pipeline that verifies the app builds and Docker image compiles
 
-| Component | Technology |
-|-----------|------------|
-| Backend | FastAPI, Python 3.12 |
-| Database | PostgreSQL + SQLAlchemy |
-| Cache | Redis |
-| Task Queue | Celery + Redis |
-| Auth | JWT (python-jose) |
-| CI/CD | GitHub Actions |
-| Deployment | Render / Railway / Fly.io |
-
-## Quick Start (Local)
+## Running it locally
 
 ```bash
-# Clone
-git clone https://github.com/yourusername/linkhub.git
-cd linkhub
-
-# Install dependencies
+git clone https://github.com/Aditya-k63/LinkHub.git
+cd LinkHub
 pip install -r requirements.txt
-
-# Setup environment
-cp .env.example .env
-
-# Run PostgreSQL and Redis (or use Docker)
-# PostgreSQL: localhost:5432
-# Redis: localhost:6379
-
-# Run migrations
-alembic upgrade head
-
-# Start the server
-uvicorn app.main:app --reload
-
-# Access
-# Web UI: http://localhost:8000
-# API Docs: http://localhost:8000/docs
 ```
 
-## Deployment (No Docker Required)
+You'll need a `.env` file with:
 
-### Option 1: Render (Recommended)
+```
+DATABASE_URL=sqlite:///./linkhub.db
+REDIS_URL=
+JWT_SECRET_KEY=any-random-string
+SECRET_KEY=another-random-string
+BASE_URL=http://localhost:8000
+```
 
-1. Push to GitHub
-2. Go to [render.com](https://render.com)
-3. Create new PostgreSQL database
-4. Create new Redis instance
-5. Create new Web Service
-6. Connect your GitHub repo
-7. Set environment variables:
-   ```
-   DATABASE_URL=<from PostgreSQL>
-   REDIS_URL=<from Redis>
-   JWT_SECRET_KEY=<random-string>
-   SECRET_KEY=<random-string>
-   BASE_URL=<your-render-url>
-   ```
-8. Deploy
-
-### Option 2: Railway
-
-1. Push to GitHub
-2. Go to [railway.app](https://railway.app)
-3. New Project → Deploy from GitHub
-4. Add PostgreSQL and Redis plugins
-5. Set environment variables
-6. Deploy
-
-### Option 3: Fly.io
+For local dev, SQLite works fine without Postgres or Redis. Just leave those empty and the app falls back gracefully.
 
 ```bash
-# Install flyctl
-curl -L https://fly.io/install.sh | sh
-
-# Login
-fly auth login
-
-# Launch
-fly launch
-
-# Deploy
-fly deploy
+uvicorn app.main:app --reload
 ```
 
-## API Endpoints
+Open http://localhost:8000 and you're in.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
-| POST | `/api/links` | Create short URL |
-| GET | `/{short_code}` | Redirect to original URL |
-| GET | `/api/links` | List user's links |
-| PUT | `/api/links/{id}` | Update link |
-| DELETE | `/api/links/{id}` | Delete link |
-| GET | `/api/analytics/{link_id}` | Get link analytics |
-| GET | `/api/admin/stats` | Admin dashboard stats |
+## Running with Docker
 
-## Database Schema
-
-```
-users
-├── id (UUID)
-├── email (unique)
-├── username (unique)
-├── hashed_password
-├── is_active
-├── is_admin
-└── created_at
-
-links
-├── id (UUID)
-├── short_code (unique)
-├── original_url
-├── title
-├── password_hash
-├── expires_at
-├── click_count
-├── owner_id (FK → users)
-└── created_at
-
-clicks
-├── id (UUID)
-├── link_id (FK → links)
-├── clicked_at
-├── ip_address
-├── user_agent
-├── referrer
-├── country
-├── browser
-├── os
-└── device_type
+```bash
+docker-compose up
 ```
 
-## Project Structure
+This spins up the app, Postgres, and Redis. Edit the `.env` file with real credentials if you want persistence.
+
+Or just pull the image:
+
+```bash
+docker run -p 8000:8000 <your-username>/linkhub
+```
+
+## Project structure
 
 ```
 LinkHub/
 ├── app/
-│   ├── api/           # Route handlers
-│   ├── core/          # Config, security, logging
-│   ├── db/            # Database models and session
-│   ├── services/      # Business logic
-│   ├── middleware/     # Auth, rate limiting
-│   ├── workers/       # Celery tasks
-│   └── main.py        # FastAPI app
-├── tests/             # Test suite
-├── nginx/             # Nginx config
-├── static/            # CSS, JS
-├── templates/         # HTML templates
-├── .github/workflows  # CI/CD
-├── docker-compose.yml
+│   ├── api/            # auth and link routes
+│   ├── core/           # config, security
+│   ├── db/             # models and database session
+│   ├── middleware/      # auth middleware, rate limiter
+│   ├── services/       # redis cache, qr code generation
+│   └── main.py         # the FastAPI app with inline frontend
+├── .github/workflows/  # CI pipeline
 ├── Dockerfile
+├── docker-compose.yml
 └── requirements.txt
 ```
 
-## CI/CD
+## API endpoints
 
-GitHub Actions runs on every push:
-- **Lint**: ruff check
-- **Test**: pytest with 80%+ coverage
-- **Deploy**: Auto-deploy to Render/Railway/Fly.io
+| Method | Path | What it does |
+|--------|------|--------------|
+| POST | `/api/auth/register` | Create account |
+| POST | `/api/auth/login` | Get JWT token |
+| POST | `/api/links` | Shorten a URL |
+| GET | `/{short_code}` | Redirect to original |
+| GET | `/api/links` | List your links |
+| PUT | `/api/links/{id}` | Update a link |
+| DELETE | `/api/links/{id}` | Delete a link |
+| GET | `/api/analytics/{link_id}` | Click analytics |
+| GET | `/api/admin/stats` | Platform stats |
+
+## How the frontend works
+
+The frontend is inline in `main.py` — no separate React app or build step. It's server-rendered HTML with vanilla JavaScript. Login, register, create links, see your dashboard — all from one page.
 
 ## License
 
