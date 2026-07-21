@@ -35,3 +35,25 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t linkhub-test .
+
+  docker-push:
+    runs-on: ubuntu-latest
+    needs: [build-check, docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/linkhub:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/linkhub:${{ github.sha }}
