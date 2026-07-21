@@ -4,46 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - LinkHub</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; min-height: 100vh; }
+        .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; justify-content: space-between; border-bottom: 1px solid #334155; }
+        .navbar a { color: #94a3b8; text-decoration: none; }
+        .navbar a:hover { color: #6366f1; }
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+        h1 { margin-bottom: 2rem; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .stat { background: #1e293b; padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .stat p { font-size: 2rem; font-weight: bold; color: #6366f1; }
+        .links-list { background: #1e293b; border-radius: 12px; padding: 1rem; }
+        .link-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #334155; }
+        .link-item:last-child { border-bottom: none; }
+        .link-info a { color: #6366f1; font-weight: 600; text-decoration: none; }
+        .link-info p { color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem; word-break: break-all; }
+        .link-stats { text-align: right; }
+        .link-stats .clicks { font-size: 1.25rem; font-weight: bold; color: #22c55e; }
+        .link-stats .label { font-size: 0.75rem; color: #94a3b8; }
+        .empty { text-align: center; padding: 3rem; color: #94a3b8; }
+        .error { text-align: center; padding: 2rem; color: #ef4444; }
+    </style>
 </head>
 <body>
     <nav class="navbar">
-        <div class="container">
-            <a href="/" class="logo">🔗 LinkHub</a>
-            <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/docs">API Docs</a>
-                <a href="#" id="logout-btn" onclick="logout()">Logout</a>
-            </div>
+        <a href="/">LinkHub</a>
+        <div>
+            <a href="/docs">API Docs</a>
+            <a href="#" onclick="logout()" style="margin-left:1rem">Logout</a>
         </div>
     </nav>
-
-    <main class="dashboard">
-        <div class="container">
-            <h1>Dashboard</h1>
-
-            <div class="stats-grid" id="stats-grid">
-                <div class="stat-card">
-                    <h3>Total Links</h3>
-                    <p id="total-links">0</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Total Clicks</h3>
-                    <p id="total-clicks">0</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Active Links</h3>
-                    <p id="active-links">0</p>
-                </div>
-            </div>
-
-            <div class="links-section">
-                <h2>Your Links</h2>
-                <div id="links-list"></div>
-            </div>
+    <div class="container">
+        <h1>Your Links</h1>
+        <div class="stats">
+            <div class="stat"><h3>Total Links</h3><p id="total-links">0</p></div>
+            <div class="stat"><h3>Total Clicks</h3><p id="total-clicks">0</p></div>
+            <div class="stat"><h3>Active Links</h3><p id="active-links">0</p></div>
         </div>
-    </main>
-
-    <script src="/static/dashboard.js"></script>
+        <div class="links-list" id="links-list">
+            <div class="empty">Loading...</div>
+        </div>
+    </div>
+    <script>
+        const API = window.location.origin;
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/';
+        async function load() {
+            try {
+                const res = await fetch(API + '/api/links', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                document.getElementById('total-links').textContent = data.total;
+                const list = document.getElementById('links-list');
+                if (data.links.length === 0) { list.innerHTML = '<div class="empty">No links yet. <a href="/">Create one</a></div>'; return; }
+                let totalClicks = 0;
+                list.innerHTML = data.links.map(l => { totalClicks += l.click_count; return `<div class="link-item"><div class="link-info"><a href="${l.short_url}" target="_blank">${l.short_url}</a><p>${l.original_url}</p></div><div class="link-stats"><div class="clicks">${l.click_count}</div><div class="label">clicks</div></div></div>`; }).join('');
+                document.getElementById('total-clicks').textContent = totalClicks;
+                document.getElementById('active-links').textContent = data.total;
+            } catch(e) { document.getElementById('links-list').innerHTML = '<div class="error">Failed to load links</div>'; }
+        }
+        function logout() { localStorage.removeItem('token'); window.location.href = '/'; }
+        load();
+    </script>
 </body>
 </html>
