@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -102,6 +103,21 @@ async def add_request_id(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_unavailable_handler(request: Request, exc: SQLAlchemyError):
+    """Answer 503 when the database cannot be reached.
+
+    A database outage is not a client error and not a bug in the request,
+    so it should not surface as a 500 - the platform needs to see that the
+    instance is unhealthy and stop routing traffic to it.
+    """
+    logger.error("Database unavailable on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "The database is currently unavailable"},
+    )
 
 
 @app.get("/health", tags=["ops"])
