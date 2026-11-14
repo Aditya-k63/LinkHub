@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -5,15 +6,40 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
+ENV/
+
+# Environment
 .env
-*.log
+.env.*
+!.env.example
+
+# Testing / tooling caches
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# Databases
+*.db
+*.sqlite3
+*.sqlite
+
+# Build artefacts
 dist/
 build/
 *.egg-info/
+
+# Logs
+*.log
+
+# Editors
 .idea/
 .vscode/
 *.swp
 *.swo
+.DS_Store

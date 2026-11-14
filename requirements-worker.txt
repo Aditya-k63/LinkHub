@@ -1,0 +1,6 @@
+# LinkHub - optional background worker dependencies
+# The API works without these: click tracking falls back to synchronous writes.
+# Install with: pip install -r requirements-worker.txt
+-r requirements.txt
+
+celery==5.4.0
