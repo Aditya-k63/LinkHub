@@ -2,20 +2,25 @@
 
 Reads the database URL and the model metadata from the application so
 there is exactly one source of truth for both.
+
+The URL is passed to ``create_engine`` directly rather than through
+``Config.set_main_option``: ConfigParser treats ``%`` as an interpolation
+character, so any database URL containing a percent sign (an encoded
+password, or a ``search_path`` option) would blow up with *"invalid
+interpolation syntax"*.
 """
 
 from __future__ import annotations
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 from alembic import context
 from app.core.config import settings
 from app.db.models import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -26,7 +31,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """Run migrations without a live connection."""
     context.configure(
-        url=config.get_main_option("sqlalchemy.url"),
+        url=settings.DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -38,20 +43,19 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations against a live connection."""
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(settings.DATABASE_URL, poolclass=pool.NullPool)
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-        )
-        with context.begin_transaction():
-            context.run_migrations()
+    try:
+        with connectable.connect() as connection:
+            context.configure(
+                connection=connection,
+                target_metadata=target_metadata,
+                compare_type=True,
+            )
+            with context.begin_transaction():
+                context.run_migrations()
+    finally:
+        connectable.dispose()
 
 
 if context.is_offline_mode():

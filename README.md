@@ -346,6 +346,18 @@ describes the service; `DATABASE_URL`, `REDIS_URL`, `BASE_URL` and
 The Docker image is multi-stage, runs as a non-root user and ships a
 `HEALTHCHECK` that polls `/health`.
 
+### Adopting Alembic on an existing database
+
+A database created by the old `create_all` bootstrap already has the tables
+but no `alembic_version` row, so `alembic upgrade head` would try to create
+them a second time. Mark it as being at the initial schema and then apply
+the rest:
+
+```bash
+alembic stamp 8dbe45b3def3   # the initial schema
+alembic upgrade head         # adds the is_bot flag
+```
+
 ---
 
 ## License
