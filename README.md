@@ -7,6 +7,11 @@ protected, given a custom alias or made to expire on a schedule.
 
 > **Live:** <https://linkhub-4b40.onrender.com> · **API docs:** `/docs`
 
+[![CI](https://github.com/Aditya-k63/LinkHub/actions/workflows/ci.yml/badge.svg)](https://github.com/Aditya-k63/LinkHub/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.162-teal.svg)](https://fastapi.tiangolo.com/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 ---
 
 ## Why it exists
@@ -93,14 +98,14 @@ being rewritten to a `GET`.
 
 ## Tech stack
 
-- **FastAPI** 0.115 · **Uvicorn**
-- **SQLAlchemy** 2.0 (ORM) · **Alembic** (migrations)
+- **FastAPI** 0.162 · **Uvicorn** 0.54
+- **SQLAlchemy** 2.1 (ORM) · **Alembic** 1.20 (migrations)
 - **PostgreSQL** 16 (Neon in production) · **SQLite** for local development
-- **Redis** 5 (cache, rate limiting, click queue)
+- **Redis** 8 (cache, rate limiting, click queue)
 - **PyJWT** + **bcrypt**
 - **Pydantic** v2 · **pydantic-settings**
 - **Jinja2** + vanilla JS for the server-rendered frontend
-- **Docker**, **GitHub Actions**, **Locust**, **Ruff**, **mypy**, **pytest**
+- **Docker**, **GitHub Actions**, **Locust**, **Ruff**, **mypy**, **pytest**, **pip-audit**
 
 ---
 
@@ -203,8 +208,8 @@ file-backed SQLite in WAL mode · **no Redis** · click writes inline.
 
 | Concurrency | Requests | Failures | Throughput | p50 | p95 | p99 |
 |---|---|---|---|---|---|---|
-| 10 users | 254 | 0 | 13 req/s | 12 ms | 40 ms | 120 ms |
-| 50 users | 1 805 | 0 | 61 req/s | 30 ms | 210 ms | 750 ms |
+| 10 users | 244 | 0 | 13 req/s | 11 ms | 46 ms | 190 ms |
+| 50 users | 1 554 | 0 | 54 req/s | 52 ms | 310 ms | 1 400 ms |
 
 ```bash
 locust -f scripts/loadtest/locustfile.py --host http://localhost:8000 \
