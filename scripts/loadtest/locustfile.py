@@ -20,6 +20,7 @@ from __future__ import annotations
 import os
 import uuid
 
+import requests
 from locust import HttpUser, between, events, task
 
 TARGET_URL = "https://github.com/Aditya-k63/LinkHub"
@@ -34,23 +35,25 @@ def on_test_start(environment, **kwargs):  # pragma: no cover - locust hook
     if state["short_code"]:
         return
 
-    client = environment.runner.client
+    base = (environment.host or "").rstrip("/")
     email = f"loadtest-{uuid.uuid4().hex[:10]}@example.com"
     username = f"load{uuid.uuid4().hex[:8]}"
 
-    response = client.post(
-        "/api/auth/register",
+    response = requests.post(
+        f"{base}/api/auth/register",
         json={"email": email, "username": username, "password": "loadtest-password"},
+        timeout=30,
     )
     if response.status_code != 201:
         print(f"Could not register the load-test user: {response.status_code}")
         return
 
     token = response.json()["access_token"]
-    created = client.post(
-        "/api/links",
+    created = requests.post(
+        f"{base}/api/links",
         json={"url": TARGET_URL, "title": "load test"},
         headers={"Authorization": f"Bearer {token}"},
+        timeout=30,
     )
     if created.status_code == 201:
         state["short_code"] = created.json()["short_code"]

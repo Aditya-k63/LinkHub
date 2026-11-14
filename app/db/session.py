@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -21,15 +21,46 @@ from app.core.logger import logger
 
 SQLITE_FALLBACK_URL = "sqlite:///./linkhub.db"
 
+#: SQLite URLs that live in memory and therefore need a single shared
+#: connection to stay visible to every session.
+IN_MEMORY_SQLITE = {"sqlite://", "sqlite:///:memory:", "sqlite+pysqlite://"}
+
 
 def _build_engine(database_url: str) -> Engine:
     """Create an engine for ``database_url``."""
     if database_url.startswith("sqlite"):
-        return create_engine(
-            database_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
+        connect_args: dict[str, object] = {"check_same_thread": False}
+
+        if database_url in IN_MEMORY_SQLITE:
+            # One connection shared by every session, otherwise each
+            # session would see its own empty database.
+            engine = create_engine(
+                database_url,
+                connect_args=connect_args,
+                poolclass=StaticPool,
+            )
+            return engine
+
+        # A file-backed database gets a normal pool. Using StaticPool here
+        # would make every session share one connection, and two
+        # concurrent commits would then fight over the same transaction
+        # ("cannot commit - no transaction is active").
+        connect_args["timeout"] = 30
+        engine = create_engine(database_url, connect_args=connect_args)
+
+        @event.listens_for(engine, "connect")
+        def _configure_sqlite(dbapi_connection, _connection_record) -> None:
+            # WAL lets readers and a writer work at the same time;
+            # busy_timeout makes a blocked writer wait instead of failing.
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA busy_timeout=30000")
+            finally:
+                cursor.close()
+
+        return engine
 
     connect_args = {"sslmode": "require"} if "neon.tech" in database_url else {}
     return create_engine(

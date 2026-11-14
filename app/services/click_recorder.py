@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.identifiers import to_uuid
 from app.core.logger import logger
 from app.db.models import Click, Link
-from app.services.redis_cache import push_click_event
+from app.services.redis_cache import push_click_event, redis_client
 
 
 def persist_click(db: Session, event: dict[str, Any]) -> None:
@@ -50,7 +50,9 @@ def persist_click(db: Session, event: dict[str, Any]) -> None:
 
 def record_click(db: Session, event: dict[str, Any]) -> None:
     """Record a click according to the configured write mode."""
-    if settings.click_write_mode == "async":
+    # Async mode needs a queue. Without Redis there is nowhere to put the
+    # event, so fall back to writing it inline rather than losing it.
+    if settings.click_write_mode == "async" and redis_client is not None:
         push_click_event(event)
         return
 

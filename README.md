@@ -193,6 +193,46 @@ curl -i http://localhost:8000/repo     # 307 Location: https://github.com/...
 
 ---
 
+## Performance
+
+Measured with the Locust scenarios in `scripts/loadtest/locustfile.py`, which
+mix redirect traffic with link creation the way real usage does.
+
+**Environment:** Windows 11 · 4 vCPU · Python 3.11 · a single Uvicorn worker ·
+file-backed SQLite in WAL mode · **no Redis** · click writes inline.
+
+| Concurrency | Requests | Failures | Throughput | p50 | p95 | p99 |
+|---|---|---|---|---|---|---|
+| 10 users | 254 | 0 | 13 req/s | 12 ms | 40 ms | 120 ms |
+| 50 users | 1 805 | 0 | 61 req/s | 30 ms | 210 ms | 750 ms |
+
+```bash
+locust -f scripts/loadtest/locustfile.py --host http://localhost:8000 \
+       --users 50 --spawn-rate 25 --run-time 30s --headless
+```
+
+**These are a floor, not a ceiling**, and it is worth being precise about
+why:
+
+- **No Redis.** Every redirect reads the link from the database. With the
+  cache warm the read disappears and only the click write remains.
+- **SQLite, not PostgreSQL.** Each redirect writes a `Click` row and
+  increments a counter, so the redirect path is write-bound. PostgreSQL
+  handles concurrent writers far better than SQLite does.
+- **Clicks are written inline.** `CLICK_WRITE_MODE=async` moves that write
+  onto a queue, taking it off the request path entirely.
+- **One worker.** The container runs a single Uvicorn process; the read
+  path is CPU-bound in Python, so it scales with cores.
+
+The useful lesson from the load test was not the numbers - it was a crash.
+The first run produced a steady stream of `500`s, because the SQLite engine
+used `StaticPool` and every session shared a single connection, so two
+concurrent commits fought over the same transaction. The fix is in
+[app/db/session.py](app/db/session.py): in-memory SQLite keeps the shared
+pool, file-backed SQLite gets a normal pool plus WAL mode.
+
+---
+
 ## Testing
 
 ```bash
@@ -259,6 +299,12 @@ falls back to SQLite when the database is unreachable; a production server
 refuses to start. Silently serving from a local file while the real database
 is down is how the previous deployment ended up returning `200 healthy`
 from `/health` while every database route returned `500`.
+
+**SQLite is a development convenience, not a production database.** The
+in-memory URL keeps a single shared connection so every session sees the
+same data. A file-backed URL gets a normal connection pool plus WAL mode,
+because a shared pool makes concurrent commits fail with *"cannot commit -
+no transaction is active"*. PostgreSQL is used everywhere that matters.
 
 ---
 
