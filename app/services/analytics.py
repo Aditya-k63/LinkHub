@@ -1,90 +1,76 @@
-from sqlalchemy.orm import Session
+"""Click analytics aggregation."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import timedelta
+
 from sqlalchemy import func
-from datetime import datetime, timedelta
-from app.db.models import Click, Link
+from sqlalchemy.orm import Session
+
+from app.db.models import Click, Link, utcnow
 
 
-def log_click(db: Session, link_id: str, click_data: dict) -> None:
-    click = Click(
-        link_id=link_id,
-        ip_address=click_data.get("ip_address"),
-        user_agent=click_data.get("user_agent"),
-        referrer=click_data.get("referrer"),
-        country=click_data.get("country"),
-        city=click_data.get("city"),
-        browser=click_data.get("browser"),
-        os=click_data.get("os"),
-        device_type=click_data.get("device_type"),
-    )
-    db.add(click)
+def get_link_analytics(
+    db: Session, link_id: uuid.UUID, days: int = 30, include_bots: bool = False
+) -> dict:
+    """Aggregate click data for a link over the last ``days`` days."""
+    since = utcnow() - timedelta(days=days)
 
-    link = db.query(Link).filter(Link.id == link_id).first()
-    if link:
-        link.click_count += 1
+    base = db.query(Click).filter(Click.link_id == link_id)
+    human = base.filter(Click.is_bot.is_(False))
 
-    db.commit()
+    windowed = human.filter(Click.clicked_at >= since)
 
-
-def get_link_analytics(db: Session, link_id: str, days: int = 30) -> dict:
-    since = datetime.utcnow() - timedelta(days=days)
-
-    total_clicks = db.query(func.count(Click.id)).filter(
-        Click.link_id == link_id,
-        Click.clicked_at >= since,
-    ).scalar()
+    total_clicks = windowed.count()
+    all_time_clicks = base.count()
 
     daily_clicks = (
-        db.query(
+        windowed.with_entities(
             func.date(Click.clicked_at).label("date"),
             func.count(Click.id).label("count"),
         )
-        .filter(Click.link_id == link_id, Click.clicked_at >= since)
         .group_by(func.date(Click.clicked_at))
         .order_by(func.date(Click.clicked_at))
         .all()
     )
 
-    top_countries = (
-        db.query(Click.country, func.count(Click.id).label("count"))
-        .filter(Click.link_id == link_id, Click.country.isnot(None))
-        .group_by(Click.country)
-        .order_by(func.count(Click.id).desc())
-        .limit(10)
-        .all()
-    )
-
-    top_browsers = (
-        db.query(Click.browser, func.count(Click.id).label("count"))
-        .filter(Click.link_id == link_id, Click.browser.isnot(None))
-        .group_by(Click.browser)
-        .order_by(func.count(Click.id).desc())
-        .limit(10)
-        .all()
-    )
-
-    top_devices = (
-        db.query(Click.device_type, func.count(Click.id).label("count"))
-        .filter(Click.link_id == link_id, Click.device_type.isnot(None))
-        .group_by(Click.device_type)
-        .order_by(func.count(Click.id).desc())
-        .limit(10)
-        .all()
-    )
-
-    top_referrers = (
-        db.query(Click.referrer, func.count(Click.id).label("count"))
-        .filter(Click.link_id == link_id, Click.referrer.isnot(None))
-        .group_by(Click.referrer)
-        .order_by(func.count(Click.id).desc())
-        .limit(10)
-        .all()
-    )
+    def top_by(column, label):
+        rows = (
+            windowed.with_entities(column, func.count(Click.id).label("count"))
+            .filter(column.isnot(None))
+            .group_by(column)
+            .order_by(func.count(Click.id).desc())
+            .limit(10)
+            .all()
+        )
+        return [{label: row[0], "clicks": row[1]} for row in rows]
 
     return {
+        "window_days": days,
         "total_clicks": total_clicks,
-        "daily_clicks": [{"date": str(d.date), "clicks": d.count} for d in daily_clicks],
-        "top_countries": [{"country": c.country, "clicks": c.count} for c in top_countries],
-        "top_browsers": [{"browser": b.browser, "clicks": b.count} for b in top_browsers],
-        "top_devices": [{"device": d.device_type, "clicks": d.count} for d in top_devices],
-        "top_referrers": [{"referrer": r.referrer, "clicks": r.count} for r in top_referrers],
+        "all_time_clicks": all_time_clicks,
+        "daily_clicks": [{"date": str(row.date), "clicks": row.count} for row in daily_clicks],
+        "top_countries": top_by(Click.country, "country"),
+        "top_browsers": top_by(Click.browser, "browser"),
+        "top_operating_systems": top_by(Click.os, "os"),
+        "top_devices": top_by(Click.device_type, "device"),
+        "top_referrers": top_by(Click.referrer, "referrer"),
+    }
+
+
+def get_platform_summary(db: Session, days: int = 30) -> dict:
+    """Aggregate click data across every link."""
+    since = utcnow() - timedelta(days=days)
+
+    total_links = db.query(func.count(Link.id)).scalar() or 0
+    total_clicks = db.query(func.count(Click.id)).scalar() or 0
+    recent_clicks = db.query(func.count(Click.id)).filter(Click.clicked_at >= since).scalar() or 0
+    bot_clicks = db.query(func.count(Click.id)).filter(Click.is_bot.is_(True)).scalar() or 0
+
+    return {
+        "total_links": total_links,
+        "total_clicks": total_clicks,
+        "recent_clicks": recent_clicks,
+        "bot_clicks": bot_clicks,
     }

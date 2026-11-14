@@ -1,41 +1,32 @@
-from fastapi import Request, HTTPException
+"""Request identity middleware.
+
+Authentication itself is enforced by the dependencies in
+:mod:`app.core.deps`. This middleware only decodes the bearer token (when
+present) so that the request id / user id can be attached to log lines.
+"""
+
+from __future__ import annotations
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-EXEMPT_PATHS = ["/", "/docs", "/openapi.json", "/redoc", "/health", "/dashboard"]
-EXEMPT_PREFIXES = ["/api/auth/", "/static/"]
+from app.core.identifiers import to_uuid
+from app.core.security import decode_access_token
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
+    """Attach the authenticated user id to the request state, if any."""
+
     async def dispatch(self, request: Request, call_next):
-        path = request.url.path
+        request.state.user_id = None
+        request.state.is_admin = False
 
-        if path in EXEMPT_PATHS:
-            return await call_next(request)
-
-        for prefix in EXEMPT_PREFIXES:
-            if path.startswith(prefix):
-                return await call_next(request)
-
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            request.state.user_id = None
-            request.state.is_admin = False
-            if path.startswith("/api/"):
-                return await call_next(request)
-            return await call_next(request)
-
-        token = auth_header.split(" ")[1]
-        try:
-            from app.core.security import decode_access_token
-            payload = decode_access_token(token)
+        header = request.headers.get("Authorization")
+        if header and header.startswith("Bearer "):
+            payload = decode_access_token(header.split(" ", 1)[1])
             if payload:
-                request.state.user_id = payload.get("sub")
-                request.state.is_admin = payload.get("is_admin", False)
-            else:
-                request.state.user_id = None
-                request.state.is_admin = False
-        except Exception:
-            request.state.user_id = None
-            request.state.is_admin = False
+                user_id = to_uuid(payload.get("sub"))
+                request.state.user_id = str(user_id) if user_id else None
+                request.state.is_admin = bool(payload.get("is_admin", False))
 
         return await call_next(request)
