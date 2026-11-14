@@ -3,7 +3,7 @@
 # --- build stage -------------------------------------------------------
 # Dependencies are installed into a virtualenv so the runtime image only
 # ever contains the venv - no build toolchain, no pip cache.
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -17,7 +17,7 @@ RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install -r requirements.txt
 
 # --- runtime stage -----------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
