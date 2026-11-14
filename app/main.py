@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -23,44 +23,16 @@ from app.middleware.auth import AuthMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.services.click_recorder import record_click
 from app.services.click_tracker import build_click_event
-from app.services.redis_cache import redis_healthy
 from app.services.redirect import (
-    RedirectError,
     LinkPasswordRequired,
+    RedirectError,
     resolve_redirect,
 )
+from app.services.redis_cache import redis_healthy
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
-
-PASSWORD_PROMPT_TEMPLATE = """<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Protected link - {app_name}</title>
-<style>
- body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#f8fafc;
-      display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}}
- .card{{background:#1e293b;padding:2rem;border-radius:12px;width:100%;max-width:380px}}
- h1{{font-size:1.25rem;margin:0 0 .5rem}}
- p{{color:#94a3b8;font-size:.9rem;margin:0 0 1.5rem}}
- input{{width:100%;padding:.75rem 1rem;margin-bottom:1rem;border:2px solid #334155;border-radius:8px;
-        background:#0f172a;color:#f8fafc;font-size:1rem}}
- input:focus{{outline:none;border-color:#6366f1}}
- button{{width:100%;padding:.75rem;background:#6366f1;color:#fff;border:none;border-radius:8px;
-         font-size:1rem;font-weight:600;cursor:pointer}}
- button:hover{{background:#4f46e5}}
- .error{{color:#ef4444;font-size:.85rem;margin-bottom:1rem}}
-</style></head>
-<body><div class="card">
- <h1>This link is password protected</h1>
- <p>Enter the password to continue to <code>{short_code}</code>.</p>
- {error}
- <form method="get" action="/{short_code}">
-   <input type="password" name="password" placeholder="Password" autofocus required>
-   <button type="submit">Unlock</button>
- </form>
-</div></body></html>"""
 
 
 @asynccontextmanager
@@ -168,8 +140,9 @@ def health_check():
 def home(request: Request):
     """Landing page."""
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "app_name": settings.APP_NAME},
+        {"app_name": settings.APP_NAME},
     )
 
 
@@ -177,8 +150,9 @@ def home(request: Request):
 def dashboard(request: Request):
     """Dashboard page."""
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
-        {"request": request, "app_name": settings.APP_NAME},
+        {"app_name": settings.APP_NAME},
     )
 
 
@@ -202,20 +176,17 @@ def redirect_short_code(
             target = resolve_redirect(db, short_code, password)
         except RedirectError as exc:
             if isinstance(exc, LinkPasswordRequired):
-                error = (
-                    '<p class="error">That password is not correct.</p>'
-                    if password
-                    else ""
-                )
-                return HTMLResponse(
-                    content=PASSWORD_PROMPT_TEMPLATE.format(
-                        app_name=settings.APP_NAME,
-                        short_code=short_code,
-                        error=error,
-                    ),
+                return templates.TemplateResponse(
+                    request,
+                    "password_prompt.html",
+                    {
+                        "app_name": settings.APP_NAME,
+                        "short_code": short_code,
+                        "error": bool(password),
+                    },
                     status_code=exc.status_code,
                 )
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
         record_click(db, build_click_event(request, target.link_id, target.short_code))
     finally:

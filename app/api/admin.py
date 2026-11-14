@@ -22,9 +22,7 @@ def admin_stats(
     total_users = db.query(func.count(User.id)).scalar() or 0
     total_links = db.query(func.count(Link.id)).scalar() or 0
     total_clicks = db.query(func.count(Click.id)).scalar() or 0
-    active_links = (
-        db.query(func.count(Link.id)).filter(Link.is_active.is_(True)).scalar() or 0
-    )
+    active_links = db.query(func.count(Link.id)).filter(Link.is_active.is_(True)).scalar() or 0
 
     top_links = (
         db.query(Link.short_code, Link.click_count, Link.original_url)

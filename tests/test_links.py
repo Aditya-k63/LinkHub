@@ -206,9 +206,7 @@ def test_update_link_changes_the_destination(client: TestClient, auth_headers: d
 
 
 def test_malformed_link_id_returns_400(client: TestClient, auth_headers: dict):
-    response = client.put(
-        "/api/links/not-a-uuid", json={"title": "x"}, headers=auth_headers
-    )
+    response = client.put("/api/links/not-a-uuid", json={"title": "x"}, headers=auth_headers)
     assert response.status_code == 400
 
 

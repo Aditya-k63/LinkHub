@@ -8,7 +8,7 @@ the redirect path does not block on a database write.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,7 @@ def record_click(db: Session, event: dict[str, Any]) -> None:
         logger.warning("Could not persist click: %s", exc)
 
 
-def drain_queued_clicks(db: Session, max_events: Optional[int] = None) -> int:
+def drain_queued_clicks(db: Session, max_events: int | None = None) -> int:
     """Persist queued click events (used by the worker)."""
     from app.services.redis_cache import pop_click_event
 

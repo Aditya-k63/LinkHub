@@ -21,19 +21,27 @@ def test_register_returns_a_token(client: TestClient, unique_email: str, unique_
     assert body["username"] == unique_username
 
 
-def test_register_rejects_duplicate_email(client: TestClient, unique_email: str, unique_username: str):
+def test_register_rejects_duplicate_email(
+    client: TestClient, unique_email: str, unique_username: str
+):
     payload = {"email": unique_email, "username": unique_username, "password": "sup3r-secret-pw"}
     assert client.post("/api/auth/register", json=payload).status_code == 201
 
     response = client.post(
         "/api/auth/register",
-        json={"email": unique_email, "username": unique_username + "x", "password": "sup3r-secret-pw"},
+        json={
+            "email": unique_email,
+            "username": unique_username + "x",
+            "password": "sup3r-secret-pw",
+        },
     )
     assert response.status_code == 409
     assert "already registered" in response.json()["detail"]
 
 
-def test_register_rejects_short_password(client: TestClient, unique_email: str, unique_username: str):
+def test_register_rejects_short_password(
+    client: TestClient, unique_email: str, unique_username: str
+):
     response = client.post(
         "/api/auth/register",
         json={"email": unique_email, "username": unique_username, "password": "short"},

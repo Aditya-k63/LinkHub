@@ -125,12 +125,11 @@ class Settings(BaseSettings):
 
         if problems:
             raise RuntimeError(
-                "Refusing to start with an unsafe production configuration: "
-                + "; ".join(problems)
+                "Refusing to start with an unsafe production configuration: " + "; ".join(problems)
             )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     return Settings()
 

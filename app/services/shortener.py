@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import random
 import string
-from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -45,7 +44,7 @@ class InvalidAliasError(ValueError):
     """Raised when a requested alias cannot be used."""
 
 
-def generate_short_code(length: Optional[int] = None) -> str:
+def generate_short_code(length: int | None = None) -> str:
     """Return a random short code."""
     size = length or settings.SHORT_CODE_LENGTH
     size = max(MIN_ALIAS_LENGTH, min(MAX_ALIAS_LENGTH, size))
@@ -59,25 +58,17 @@ def validate_alias(alias: str) -> str:
     if not candidate:
         raise InvalidAliasError("Alias cannot be empty")
     if len(candidate) < MIN_ALIAS_LENGTH:
-        raise InvalidAliasError(
-            f"Alias must be at least {MIN_ALIAS_LENGTH} characters long"
-        )
+        raise InvalidAliasError(f"Alias must be at least {MIN_ALIAS_LENGTH} characters long")
     if len(candidate) > MAX_ALIAS_LENGTH:
-        raise InvalidAliasError(
-            f"Alias must be at most {MAX_ALIAS_LENGTH} characters long"
-        )
+        raise InvalidAliasError(f"Alias must be at most {MAX_ALIAS_LENGTH} characters long")
     if not all(char in ALIAS_PATTERN for char in candidate):
-        raise InvalidAliasError(
-            "Alias may only contain letters, numbers, hyphens and underscores"
-        )
+        raise InvalidAliasError("Alias may only contain letters, numbers, hyphens and underscores")
     if candidate.lower() in RESERVED_CODES:
         raise InvalidAliasError(f"Alias '{candidate}' is reserved")
     return candidate
 
 
-def get_link_by_code(
-    db: Session, short_code: str, include_inactive: bool = True
-) -> Optional[Link]:
+def get_link_by_code(db: Session, short_code: str, include_inactive: bool = True) -> Link | None:
     """Return the link for ``short_code``, or ``None``."""
     query = db.query(Link).filter(Link.short_code == short_code)
     if not include_inactive:
@@ -85,7 +76,7 @@ def get_link_by_code(
     return query.first()
 
 
-def create_short_code(db: Session, custom_alias: Optional[str] = None) -> str:
+def create_short_code(db: Session, custom_alias: str | None = None) -> str:
     """Return an available short code.
 
     Custom aliases are validated first. Random codes are retried on the

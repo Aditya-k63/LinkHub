@@ -7,9 +7,10 @@ Redis outage degrades performance instead of taking the API down.
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from app.core.config import settings
 from app.core.logger import logger
@@ -19,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover - redis is a hard dependency
     redis_lib = None  # type: ignore[assignment]
 
-redis_client: Optional[Any] = None
+redis_client: Any | None = None
 
 if redis_lib is not None and settings.REDIS_URL:
     try:
@@ -97,19 +98,17 @@ def redis_healthy() -> bool:
 # --------------------------------------------------------------------------
 
 
-def cache_link(short_code: str, original_url: str, ttl: Optional[int] = None) -> None:
+def cache_link(short_code: str, original_url: str, ttl: int | None = None) -> None:
     """Cache the destination of a short code."""
     if redis_client is None:
         return
     try:
-        redis_client.setex(
-            f"link:{short_code}", ttl or settings.REDIS_CACHE_TTL, original_url
-        )
+        redis_client.setex(f"link:{short_code}", ttl or settings.REDIS_CACHE_TTL, original_url)
     except Exception as exc:
         logger.warning("cache_link failed for %s: %s", short_code, exc)
 
 
-def get_cached_link(short_code: str) -> Optional[str]:
+def get_cached_link(short_code: str) -> str | None:
     """Return the cached destination for ``short_code`` if there is one."""
     if redis_client is None:
         return None
@@ -137,14 +136,12 @@ def cache_link_record(short_code: str, payload: dict) -> None:
     try:
         import json
 
-        redis_client.setex(
-            f"link:{short_code}", settings.REDIS_CACHE_TTL, json.dumps(payload)
-        )
+        redis_client.setex(f"link:{short_code}", settings.REDIS_CACHE_TTL, json.dumps(payload))
     except Exception as exc:
         logger.warning("cache_link_record failed for %s: %s", short_code, exc)
 
 
-def get_cached_link_record(short_code: str) -> Optional[dict]:
+def get_cached_link_record(short_code: str) -> dict | None:
     """Return the cached link metadata for ``short_code``, if present."""
     if redis_client is None:
         return None
@@ -177,7 +174,7 @@ def push_click_event(event_data: dict) -> None:
         logger.warning("push_click_event failed: %s", exc)
 
 
-def pop_click_event(timeout: int = 1) -> Optional[dict]:
+def pop_click_event(timeout: int = 1) -> dict | None:
     """Pop the oldest queued click event, if any."""
     if redis_client is None:
         return None
@@ -200,7 +197,7 @@ def pop_click_event(timeout: int = 1) -> Optional[dict]:
 
 def check_rate_limit(
     identifier: str,
-    limit: Optional[int] = None,
+    limit: int | None = None,
     window: int = 60,
 ) -> bool:
     """Return True when the request is allowed.
@@ -224,9 +221,7 @@ def check_rate_limit(
 def reset_rate_limit(identifier: str) -> None:
     """Clear the counter for ``identifier`` (used by the test-suite)."""
     if redis_client is not None:
-        try:
+        with contextlib.suppress(Exception):
             redis_client.delete(f"rate_limit:{identifier}")
-        except Exception:
-            pass
     with _local_lock:
         _local_buckets.pop(f"rate_limit:{identifier}", None)

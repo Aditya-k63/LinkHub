@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, HttpUrl
@@ -34,17 +33,17 @@ MAX_TTL_HOURS = 24 * 365
 
 class CreateLinkRequest(BaseModel):
     url: HttpUrl
-    custom_alias: Optional[str] = Field(default=None, max_length=10)
-    title: Optional[str] = Field(default=None, max_length=255)
-    password: Optional[str] = Field(default=None, max_length=128)
-    expires_in_hours: Optional[int] = Field(default=None, gt=0, le=MAX_TTL_HOURS)
+    custom_alias: str | None = Field(default=None, max_length=10)
+    title: str | None = Field(default=None, max_length=255)
+    password: str | None = Field(default=None, max_length=128)
+    expires_in_hours: int | None = Field(default=None, gt=0, le=MAX_TTL_HOURS)
 
 
 class UpdateLinkRequest(BaseModel):
-    original_url: Optional[HttpUrl] = None
-    title: Optional[str] = Field(default=None, max_length=255)
-    is_active: Optional[bool] = None
-    expires_in_hours: Optional[int] = Field(default=None, gt=0, le=MAX_TTL_HOURS)
+    original_url: HttpUrl | None = None
+    title: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = None
+    expires_in_hours: int | None = Field(default=None, gt=0, le=MAX_TTL_HOURS)
 
 
 class LinkResponse(BaseModel):
@@ -52,10 +51,10 @@ class LinkResponse(BaseModel):
     short_code: str
     short_url: str
     original_url: str
-    title: Optional[str] = None
+    title: str | None = None
     click_count: int
     created_at: str
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
     is_active: bool
     qr_code: str
 
@@ -65,10 +64,10 @@ class LinkSummary(BaseModel):
     short_code: str
     short_url: str
     original_url: str
-    title: Optional[str] = None
+    title: str | None = None
     click_count: int
     created_at: str
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
     is_active: bool
 
 
@@ -108,7 +107,7 @@ def create_link(
     try:
         short_code = create_short_code(db, payload.custom_alias)
     except InvalidAliasError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     expires_at = None
     if payload.expires_in_hours:
@@ -131,13 +130,13 @@ def create_link(
     db.add(link)
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         # Lost a race for the unique short code - report it rather than 500.
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="That short code was just taken, please try again",
-        )
+        ) from exc
     db.refresh(link)
 
     warm_cache(link)
@@ -169,12 +168,7 @@ def list_links(
     """List the links owned by the authenticated user."""
     query = db.query(Link).filter(Link.owner_id == user.id)
     total = query.count()
-    links = (
-        query.order_by(Link.created_at.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+    links = query.order_by(Link.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
     return LinkListResponse(
         links=[_to_summary(link) for link in links],
         total=total,
@@ -187,7 +181,7 @@ def list_links(
 def resolve_link(
     short_code: str,
     request: Request,
-    password: Optional[str] = Query(default=None),
+    password: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> dict:
     """Resolve a short code to its destination and record the click.
@@ -198,7 +192,7 @@ def resolve_link(
     try:
         target = resolve_redirect(db, short_code, password)
     except RedirectError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     record_click(db, build_click_event(request, target.link_id, target.short_code))
 
@@ -219,15 +213,9 @@ def update_link(
     """Update a link owned by the authenticated user."""
     identifier = to_uuid(link_id)
     if identifier is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id")
 
-    link = (
-        db.query(Link)
-        .filter(Link.id == identifier, Link.owner_id == user.id)
-        .first()
-    )
+    link = db.query(Link).filter(Link.id == identifier, Link.owner_id == user.id).first()
     if link is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
@@ -261,15 +249,9 @@ def delete_link(
     """Delete a link owned by the authenticated user."""
     identifier = to_uuid(link_id)
     if identifier is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id")
 
-    link = (
-        db.query(Link)
-        .filter(Link.id == identifier, Link.owner_id == user.id)
-        .first()
-    )
+    link = db.query(Link).filter(Link.id == identifier, Link.owner_id == user.id).first()
     if link is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 

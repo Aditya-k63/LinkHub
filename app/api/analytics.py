@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -26,15 +24,9 @@ def link_analytics(
     """Return click analytics for a link owned by the authenticated user."""
     identifier = to_uuid(link_id)
     if identifier is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id")
 
-    link = (
-        db.query(Link)
-        .filter(Link.id == identifier, Link.owner_id == user.id)
-        .first()
-    )
+    link = db.query(Link).filter(Link.id == identifier, Link.owner_id == user.id).first()
     if link is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
@@ -58,15 +50,9 @@ def link_series(
     """Return the daily click series for a link (used by the dashboard chart)."""
     identifier = to_uuid(link_id)
     if identifier is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed link id")
 
-    link = (
-        db.query(Link)
-        .filter(Link.id == identifier, Link.owner_id == user.id)
-        .first()
-    )
+    link = db.query(Link).filter(Link.id == identifier, Link.owner_id == user.id).first()
     if link is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 

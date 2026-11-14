@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -38,9 +36,7 @@ class TokenResponse(BaseModel):
 
 
 def _issue_token(user: User) -> TokenResponse:
-    access_token = create_access_token(
-        data={"sub": str(user.id), "is_admin": user.is_admin}
-    )
+    access_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin})
     return TokenResponse(
         access_token=access_token,
         user_id=str(user.id),
@@ -52,13 +48,9 @@ def _issue_token(user: User) -> TokenResponse:
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Create an account and return a JWT."""
     if db.query(User).filter(User.email == payload.email).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     if db.query(User).filter(User.username == payload.username).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Username already taken"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already taken")
 
     user = User(
         email=payload.email,
@@ -82,9 +74,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
 
     logger.info("User %s logged in", user.username)
     return _issue_token(user)

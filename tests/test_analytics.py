@@ -31,7 +31,9 @@ def test_analytics_parses_the_user_agent(client: TestClient, auth_headers: dict)
 
     client.get(
         f"/{created['short_code']}",
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"},
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
+        },
         follow_redirects=False,
     )
 

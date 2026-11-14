@@ -8,9 +8,6 @@ These are only executed by a worker process:
 
 from __future__ import annotations
 
-from datetime import timedelta
-
-from app.core.config import settings
 from app.core.logger import logger
 from app.db.models import Link, utcnow
 from app.db.session import SessionLocal

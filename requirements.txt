@@ -5,6 +5,7 @@ fastapi==0.115.0
 uvicorn==0.32.1
 sqlalchemy==2.0.32
 psycopg2-binary==2.9.10
+alembic==1.19.1
 
 # Auth (pyjwt replaces python-jose: 3.3.0 has CVE-2024-33663 / CVE-2024-33664)
 pyjwt==2.15.1

@@ -7,7 +7,7 @@ parsed browser / OS / device.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import Request
 
@@ -40,7 +40,7 @@ BOT_SIGNATURES = (
 )
 
 
-def client_ip(request: Request) -> Optional[str]:
+def client_ip(request: Request) -> str | None:
     """Return the caller's IP address.
 
     ``X-Forwarded-For`` holds a chain of proxies followed by the client,
@@ -54,7 +54,7 @@ def client_ip(request: Request) -> Optional[str]:
     return None
 
 
-def parse_user_agent(user_agent: Optional[str]) -> dict[str, Optional[str]]:
+def parse_user_agent(user_agent: str | None) -> dict[str, str | None]:
     """Break a user-agent string into browser / OS / device."""
     if not user_agent or user_agent_parser is None:
         return {"browser": None, "os": None, "device_type": None}
@@ -74,7 +74,7 @@ def parse_user_agent(user_agent: Optional[str]) -> dict[str, Optional[str]]:
         return {"browser": None, "os": None, "device_type": None}
 
 
-def _normalise(value: Optional[str]) -> Optional[str]:
+def _normalise(value: str | None) -> str | None:
     if not value:
         return None
     cleaned = str(value).strip()
@@ -83,7 +83,7 @@ def _normalise(value: Optional[str]) -> Optional[str]:
     return cleaned[:50]
 
 
-def is_bot(user_agent: Optional[str]) -> bool:
+def is_bot(user_agent: str | None) -> bool:
     """Return True when the user agent looks automated."""
     if not user_agent:
         return False

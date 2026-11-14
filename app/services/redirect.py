@@ -10,11 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.core.logger import logger
 from app.core.security import verify_password
 from app.db.models import Link, utcnow
 from app.services.redis_cache import (
@@ -59,7 +57,7 @@ class RedirectTarget:
     link_id: str
     short_code: str
     original_url: str
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     from_cache: bool
 
 
@@ -84,7 +82,7 @@ def drop_cache(short_code: str) -> None:
     invalidate_link_cache(short_code)
 
 
-def _parse_expiry(value: Optional[str]) -> Optional[datetime]:
+def _parse_expiry(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
@@ -93,9 +91,7 @@ def _parse_expiry(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def resolve_redirect(
-    db: Session, short_code: str, password: Optional[str] = None
-) -> RedirectTarget:
+def resolve_redirect(db: Session, short_code: str, password: str | None = None) -> RedirectTarget:
     """Resolve ``short_code`` to its destination.
 
     Raises a :class:`RedirectError` subclass when the link cannot be
@@ -119,9 +115,8 @@ def resolve_redirect(
         raise LinkExpired()
 
     password_hash = payload.get("password_hash")
-    if password_hash:
-        if not password or not verify_password(password, password_hash):
-            raise LinkPasswordRequired()
+    if password_hash and (not password or not verify_password(password, password_hash)):
+        raise LinkPasswordRequired()
 
     return RedirectTarget(
         link_id=str(payload["id"]),

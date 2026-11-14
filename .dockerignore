@@ -2,13 +2,19 @@
 .github
 .env
 .env.*
+!.env.example
 __pycache__
 *.pyc
 *.pyo
 .pytest_cache
 .mypy_cache
+.ruff_cache
+.coverage
+htmlcov
 *.db
 *.sqlite3
+.venv
+venv
 docker-compose.yml
 .dockerignore
 .gitignore
@@ -16,4 +22,4 @@ docker-compose.yml
 .vscode
 .idea
 node_modules
-test.db
+tests

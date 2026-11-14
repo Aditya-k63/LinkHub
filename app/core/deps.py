@@ -9,8 +9,6 @@ the right status code.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -36,7 +34,7 @@ _INVALID_TOKEN = HTTPException(
 
 def get_current_user(
     request: Request,
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
     """Resolve the authenticated user or raise 401."""
@@ -55,9 +53,7 @@ def get_current_user(
     if user is None:
         raise _INVALID_TOKEN
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
 
     request.state.user_id = str(user.id)
     return user
@@ -68,7 +64,5 @@ def get_current_admin(
 ) -> User:
     """Resolve the authenticated user or raise 403 if they are not an admin."""
     if not user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user

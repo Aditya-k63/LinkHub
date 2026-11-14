@@ -9,10 +9,9 @@ represent a UUID differently, so every identifier is normalised through
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 
-def to_uuid(value: object) -> Optional[uuid.UUID]:
+def to_uuid(value: object) -> uuid.UUID | None:
     """Return ``value`` as a :class:`uuid.UUID`, or ``None`` if it is not one."""
     if value is None:
         return None

@@ -6,8 +6,6 @@ it directly instead of embedding a base64 blob in every JSON response.
 
 from __future__ import annotations
 
-import io
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session

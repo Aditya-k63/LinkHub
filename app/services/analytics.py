@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import timedelta
-from typing import Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -51,9 +50,7 @@ def get_link_analytics(
         "window_days": days,
         "total_clicks": total_clicks,
         "all_time_clicks": all_time_clicks,
-        "daily_clicks": [
-            {"date": str(row.date), "clicks": row.count} for row in daily_clicks
-        ],
+        "daily_clicks": [{"date": str(row.date), "clicks": row.count} for row in daily_clicks],
         "top_countries": top_by(Click.country, "country"),
         "top_browsers": top_by(Click.browser, "browser"),
         "top_operating_systems": top_by(Click.os, "os"),
@@ -68,12 +65,8 @@ def get_platform_summary(db: Session, days: int = 30) -> dict:
 
     total_links = db.query(func.count(Link.id)).scalar() or 0
     total_clicks = db.query(func.count(Click.id)).scalar() or 0
-    recent_clicks = (
-        db.query(func.count(Click.id)).filter(Click.clicked_at >= since).scalar() or 0
-    )
-    bot_clicks = (
-        db.query(func.count(Click.id)).filter(Click.is_bot.is_(True)).scalar() or 0
-    )
+    recent_clicks = db.query(func.count(Click.id)).filter(Click.clicked_at >= since).scalar() or 0
+    bot_clicks = db.query(func.count(Click.id)).filter(Click.is_bot.is_(True)).scalar() or 0
 
     return {
         "total_links": total_links,

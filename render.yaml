@@ -2,24 +2,34 @@ services:
   - type: web
     name: linkhub
     runtime: python
+    plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # Neon (or any managed PostgreSQL). Neon requires sslmode=require.
       - key: DATABASE_URL
-        fromDatabase:
-          name: linkhub-db
-          property: connectionString
+        sync: false
+      # Upstash or any managed Redis.
       - key: REDIS_URL
         sync: false
-      - key: JWT_SECRET_KEY
-        generateValue: true
       - key: SECRET_KEY
         generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      # The public origin short links are built from.
       - key: BASE_URL
         sync: false
-
-databases:
-  - name: linkhub-db
-    plan: free
-    databaseName: linkhub
-    user: linkhub
+      # Comma separated allowlist of browser origins.
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: CLICK_WRITE_MODE
+        value: sync
