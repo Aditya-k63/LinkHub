@@ -3,4 +3,4 @@
 # Install with: pip install -r requirements-worker.txt
 -r requirements.txt
 
-celery==5.4.0
+celery==5.7.0
