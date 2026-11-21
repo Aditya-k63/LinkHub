@@ -15,7 +15,7 @@ bcrypt==5.0.0
 pydantic[email]==2.14.3
 pydantic-settings==2.16.3
 python-dotenv==1.2.4
-email-validator==2.2.0
+email-validator==2.4.0
 
 # Cache, rate limiting, click queue
 redis==8.1.0
