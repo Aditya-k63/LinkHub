@@ -30,4 +30,4 @@ ua-parser==1.0.2
 # Server-rendered frontend
 jinja2==3.1.6
 
-python-multipart==0.0.33
+python-multipart==0.0.34
